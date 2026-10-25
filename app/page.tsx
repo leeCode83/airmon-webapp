@@ -117,13 +117,13 @@ export default function Page() {
               points={gasSeries}
               format={formatGas}
               reference={GAS_REFERENCE}
-              height={240}
+              height={200}
               ariaLabel="Gas level across the selected window"
               chartsReady={chartsReady}
             />
           </section>
 
-          <section className="panel span-4" aria-label="Air verdict">
+          <section className="panel span-4 fill" aria-label="Air verdict">
             <header>
               <h2>Air verdict</h2>
               {latest && <StatusPill status={latest.status} />}

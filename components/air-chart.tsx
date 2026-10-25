@@ -17,6 +17,7 @@ interface ChartsApi {
       format: (v: number) => string;
       height: number;
       reference?: { value: number; label: string }[];
+      xAt?: number[];
     },
   ) => void;
 }
@@ -53,12 +54,19 @@ export default function AirChart({
     if (!el || !chartsReady || points.length === 0) return;
     const Charts = (window as unknown as { Charts?: ChartsApi }).Charts;
     if (!Charts) return;
+    // Downsampled buckets repeat minute labels; label a few evenly spaced points.
+    // Fewer on a narrow screen so the first two never touch.
+    const maxLabels = el.clientWidth < 480 ? 4 : 6;
+    const step = Math.max(1, Math.ceil(points.length / maxLabels));
+    const xAt: number[] = [];
+    for (let i = 0; i < points.length; i += step) xAt.push(i);
     Charts.line(el, {
       labels: points.map((p) => formatTime(new Date(p.t))),
       series: [{ name: ariaLabel, values: points.map((p) => p.v) }],
       format,
       height,
       reference,
+      xAt,
     });
   }, [chartsReady, points, format, reference, height, ariaLabel]);
 

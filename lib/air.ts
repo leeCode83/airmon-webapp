@@ -86,6 +86,17 @@ export function formatTime(ts: string | Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/**
+ * Time with seconds for the history table — rows land 5 s apart, so minutes
+ * alone repeat: "14:32:05".
+ * @param ts - ISO timestamp (or Date).
+ */
+export function formatClock(ts: string | Date): string {
+  const d = typeof ts === "string" ? new Date(ts) : ts;
+  const s = `${String(d.getSeconds()).padStart(2, "0")}`;
+  return `${formatTime(d)}:${s}`;
+}
+
 /** Chart series point: epoch ms + value. */
 export interface SeriesPoint {
   /** Epoch milliseconds. */

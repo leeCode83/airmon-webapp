@@ -123,21 +123,26 @@ export function buildSeries(
   const sorted = [...rows].sort((a, b) => +new Date(a.ts) - +new Date(b.ts));
   const t0 = +new Date(sorted[0].ts);
   const t1 = +new Date(sorted[sorted.length - 1].ts);
-  const width = Math.max((t1 - t0) / maxPoints, 1);
+  // maxPoints-1 intervals across the span keep the point count at maxPoints.
+  const width = Math.max((t1 - t0) / Math.max(maxPoints - 1, 1), 1);
+  // Integer bucket indices — float bucket keys drift by epsilon at the last bucket.
+  const nBuckets = Math.floor((t1 - t0) / width) + 1;
+  const bucketOf = (t: number) =>
+    Math.min(Math.max(Math.floor((t - t0) / width), 0), nBuckets - 1);
 
   const sums = new Map<number, { sum: number; n: number }>();
   for (const r of sorted) {
-    const bucket = Math.floor((+new Date(r.ts) - t0) / width) * width + t0;
-    const acc = sums.get(bucket) ?? { sum: 0, n: 0 };
+    const bi = bucketOf(+new Date(r.ts));
+    const acc = sums.get(bi) ?? { sum: 0, n: 0 };
     acc.sum += pick(r);
     acc.n += 1;
-    sums.set(bucket, acc);
+    sums.set(bi, acc);
   }
 
   const out: SeriesPoint[] = [];
-  for (let b = t0; b <= t1; b += width) {
-    const acc = sums.get(b);
-    out.push({ t: b, v: acc ? acc.sum / acc.n : null });
+  for (let bi = 0; bi < nBuckets; bi++) {
+    const acc = sums.get(bi);
+    out.push({ t: t0 + bi * width, v: acc ? acc.sum / acc.n : null });
   }
   return out;
 }

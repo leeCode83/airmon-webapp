@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AirMon — Air Quality Monitor Dashboard
 
-## Getting Started
+Live dashboard for the Assignment 2 air-quality prototype. An ESP32 node reads the
+MQ-135 (gas), DHT11 (temperature + humidity) and LDR (light) every 5 seconds and
+POSTs each reading to a Supabase `log` table; this Next.js app polls that table
+every 10 seconds and shows the verdict, sensors, charts and history.
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependencies:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   ```bash
+   npm install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Copy `.env.example` to `.env.local` (or `.env`) and fill both values from
+   **Supabase Dashboard > Project Settings > API** — the same URL and publishable
+   key the firmware already uses:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   ```
 
-## Learn More
+   The publishable/anon key is safe in the browser: RLS on `log` allows SELECT only.
 
-To learn more about Next.js, take a look at the following resources:
+3. Run:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   npm run dev     # dashboard at http://localhost:3000
+   npm test        # 22 unit tests (domain rules, chart series, demo data, poller)
+   npm run build   # production build
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Without env vars the dashboard renders a deterministic demo dataset (with a
+banner), so the UI works before Supabase is connected.
 
-## Deploy on Vercel
+## Data contract
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Table `log`, one row per 5-second reading (written by `monitor_udara_supabase.ino`):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Column   | Type        | Meaning                                        |
+| -------- | ----------- | ---------------------------------------------- |
+| `ts`     | timestamptz | Row time, set by Postgres `now()`              |
+| `gas`    | int         | MQ-135 raw ADC 0–4095 (≥500 SEDANG, ≥2000 BURUK) |
+| `temp`   | float       | Temperature °C                                 |
+| `hum`    | float       | Relative humidity %RH                          |
+| `ldr`    | int         | LDR raw ADC (>3500 = night)                    |
+| `fan`    | int 0/1     | Fan actuator state                             |
+| `status` | text        | `BAIK` / `SEDANG` / `BURUK`                    |
+
+## Structure
+
+- `lib/air.ts` — domain rules: thresholds, status, formatters, chart series (one source of truth)
+- `lib/supabase.ts` — Supabase client + the one query
+- `lib/poll.ts` — interval poller (framework-free, fake-timer testable)
+- `lib/demo.ts` — deterministic demo dataset
+- `hooks/use-air-data.ts` — React polling state
+- `components/` — status pill, KPI strip, chart, range select, history table, connection stamp
+- `app/` — layout, page, design tokens (data-terminal style via the repo's design-taste-frontend skill)
+- `tests/` — Vitest unit tests

@@ -107,8 +107,9 @@ export interface SeriesPoint {
 
 /**
  * Downsample rows into ≤ `maxPoints` equal time buckets, averaging each metric.
- * Keeps long windows (6 h ≈ 4,320 rows at 5 s) drawable as one SVG line. Empty
- * buckets stay null — an honest gap, not a fake flat line.
+ * Data sparser than the cap maps one row to one point, so a short history draws
+ * a continuous line. Keeps long windows (6 h ≈ 4,320 rows at 5 s) drawable.
+ * Empty buckets stay null — an honest gap, not a fake flat line.
  * @param rows - Log rows, any order; sorted internally by timestamp.
  * @param pick - Value to plot per row, e.g. `(r) => r.gas`.
  * @param maxPoints - Bucket cap. Default 150.
@@ -123,12 +124,16 @@ export function buildSeries(
   const sorted = [...rows].sort((a, b) => +new Date(a.ts) - +new Date(b.ts));
   const t0 = +new Date(sorted[0].ts);
   const t1 = +new Date(sorted[sorted.length - 1].ts);
-  // maxPoints-1 intervals across the span keep the point count at maxPoints.
-  const width = Math.max((t1 - t0) / Math.max(maxPoints - 1, 1), 1);
-  // Integer bucket indices — float bucket keys drift by epsilon at the last bucket.
-  const nBuckets = Math.floor((t1 - t0) / width) + 1;
+  // Bucket only when the data is denser than the cap. Sparser data maps one row
+  // to one point: a 47-row first hour draws a continuous line, never scattered
+  // dots in 150 mostly-empty buckets.
+  const nBuckets = Math.min(maxPoints, sorted.length);
+  const width = Math.max((t1 - t0) / Math.max(nBuckets - 1, 1), 1);
+  // Integer bucket indices. The 1e-9 nudges a float-drifted boundary back onto
+  // its bucket: 64000/(64000/29) evaluates to 28.999…, which would strand the
+  // newest row (the live tip) one bucket early.
   const bucketOf = (t: number) =>
-    Math.min(Math.max(Math.floor((t - t0) / width), 0), nBuckets - 1);
+    Math.min(Math.max(Math.floor((t - t0) / width + 1e-9), 0), nBuckets - 1);
 
   const sums = new Map<number, { sum: number; n: number }>();
   for (const r of sorted) {

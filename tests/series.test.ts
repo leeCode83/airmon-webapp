@@ -42,10 +42,23 @@ describe("buildSeries", () => {
     expect(pts[2].v).toBe(600);
   });
 
-  it("leaves empty buckets as null gaps", () => {
-    const pts = buildSeries([row(0, 100), row(60, 400)], (r) => r.gas, 30);
-    expect(pts[0].v).toBe(100);
-    expect(pts.at(-1)!.v).toBe(400);
+  it("maps sparse data one row to one point — no invented gaps", () => {
+    const rows = [row(0, 100), row(10, 200), row(20, 300), row(30, 400), row(40, 500)];
+    const pts = buildSeries(rows, (r) => r.gas, 150);
+    expect(pts.length).toBe(5);
+    expect(pts.map((p) => p.v)).toEqual([100, 200, 300, 400, 500]);
+  });
+
+  it("leaves empty buckets as null gaps when dense data has a hole", () => {
+    // 35 rows: 0–29 s continuous, a 30 s outage, then 60–64 s.
+    const rows = [
+      ...Array.from({ length: 30 }, (_, i) => row(i, 100 + i)),
+      ...Array.from({ length: 5 }, (_, i) => row(60 + i, 400 + i)),
+    ];
+    const pts = buildSeries(rows, (r) => r.gas, 30);
+    expect(pts.length).toBeLessThanOrEqual(30);
+    expect(pts[0].v).not.toBeNull();
+    expect(pts.at(-1)!.v).not.toBeNull();
     expect(pts.slice(1, -1).some((p) => p.v === null)).toBe(true);
   });
 });

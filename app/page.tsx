@@ -70,7 +70,7 @@ export default function Page() {
           />
         </svg>
         <span className="name">AirMon</span>
-        <span className="scope">Room monitor · ESP32</span>
+        <span className="scope">Automatic Room monitor</span>
       </header>
 
       <main className="canvas">

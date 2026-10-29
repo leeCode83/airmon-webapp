@@ -21,7 +21,7 @@ import {
   formatHum,
   formatTemp,
   formatTime,
-  weeklySeries,
+  windowSeries,
   type AirLog,
   type AirStatus,
 } from "@/lib/air";
@@ -53,9 +53,9 @@ export default function Page() {
   const { rows, state, lastUpdated, errorMsg, demo, retry } = useAirData();
 
   const latest = rows.at(-1) ?? null;
-  const gasSeries = useMemo(() => weeklySeries(rows, (r) => r.gas), [rows]);
-  const tempSeries = useMemo(() => weeklySeries(rows, (r) => r.temp), [rows]);
-  const humSeries = useMemo(() => weeklySeries(rows, (r) => r.hum), [rows]);
+  const gasSeries = useMemo(() => windowSeries(rows, (r) => r.gas), [rows]);
+  const tempSeries = useMemo(() => windowSeries(rows, (r) => r.temp), [rows]);
+  const humSeries = useMemo(() => windowSeries(rows, (r) => r.hum), [rows]);
   const gasSummary = useMemo(() => computeSummary(rows, (r) => r.gas), [rows]);
   const peak = useMemo(
     () => rows.reduce((a, b) => (b.gas > a.gas ? b : a), rows[0]),
@@ -78,7 +78,7 @@ export default function Page() {
             <h1>Overview</h1>
             <p className="sub">
               {rows.length > 0
-                ? `Gas peaked at ${formatGas(peak.gas)} at ${formatTime(peak.ts)} this week.`
+                ? `Gas peaked at ${formatGas(peak.gas)} at ${formatTime(peak.ts)} in the last 3 hours.`
                 : "Live readings from the sensor node, refreshed every 10 seconds."}
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function Page() {
               format={formatGas}
               reference={GAS_REFERENCE}
               height={200}
-              ariaLabel="Gas level across the past week"
+              ariaLabel="Gas level over the last 3 hours"
               chartsReady={chartsReady}
             />
           </section>
@@ -138,7 +138,7 @@ export default function Page() {
                     <span className="v">{fanLabel(latest.fan)}</span>
                   </div>
                   <div className="kv-row">
-                    <span className="k">Gas avg this week</span>
+                    <span className="k">Gas avg (3 h)</span>
                     <span className="v">
                       {formatGas(Math.round(gasSummary.avg))}
                       <small>ADC</small>
@@ -166,7 +166,7 @@ export default function Page() {
               points={tempSeries}
               format={formatTemp}
               height={190}
-              ariaLabel="Temperature across the past week"
+              ariaLabel="Temperature over the last 3 hours"
               chartsReady={chartsReady}
             />
           </section>
@@ -180,7 +180,7 @@ export default function Page() {
               points={humSeries}
               format={formatHum}
               height={190}
-              ariaLabel="Humidity across the past week"
+              ariaLabel="Humidity over the last 3 hours"
               chartsReady={chartsReady}
             />
           </section>

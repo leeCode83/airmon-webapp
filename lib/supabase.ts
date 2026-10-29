@@ -3,7 +3,7 @@
  * no polling. Uses the publishable key from env — RLS allows anon SELECT only.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { WEEK_MS, type AirLog } from "./air";
+import { WINDOW_MS, type AirLog } from "./air";
 
 /** Table name the ESP32 firmware writes to. */
 const TABLE = "log";
@@ -23,8 +23,8 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 /**
- * Fetch the past week of `log`, ascending in time: the dashboard's one window.
- * Charts bucket it downstream.
+ * Fetch the last 3 hours of `log`, ascending in time: the dashboard's one
+ * window. Charts bucket it into 5-minute steps downstream.
  *
  * Supabase caps every request at 1,000 rows (`db.max_rows`), so the window is
  * paged through with `.range` until a short page. Ascending order comes from
@@ -32,10 +32,10 @@ export function getSupabase(): SupabaseClient | null {
  * @returns Rows ascending by `ts`; empty array when none in the window.
  * @throws When the query fails (offline, bad env, missing table).
  */
-export async function getWeekLogs(): Promise<AirLog[]> {
+export async function getWindowLogs(): Promise<AirLog[]> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase env vars are not set");
-  const since = new Date(Date.now() - WEEK_MS).toISOString();
+  const since = new Date(Date.now() - WINDOW_MS).toISOString();
   const PAGE = 1000; // the server's own hard cap per request
   const out: AirLog[] = [];
   for (let offset = 0; offset < 20 * PAGE; offset += PAGE) {

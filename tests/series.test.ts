@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BUCKET_MS,
   computeSummary,
-  formatWeekLabel,
   formatWeekTip,
-  weeklySeries,
+  windowSeries,
   type AirLog,
 } from "@/lib/air";
 
@@ -26,37 +25,37 @@ function rowAt(d: Date, gas: number): AirLog {
   return { ...row(0, gas), ts: d.toISOString() };
 }
 
-describe("weeklySeries", () => {
+describe("windowSeries", () => {
   it("returns nothing for empty rows", () => {
-    expect(weeklySeries([], (r) => r.gas)).toEqual([]);
+    expect(windowSeries([], (r) => r.gas)).toEqual([]);
   });
 
-  it("returns 28 points spaced 6 h, anchored on a local 6-hour boundary", () => {
-    // Newest row 14:37 local: the last bucket starts at 12:00 local.
-    const pts = weeklySeries([rowAt(new Date(2026, 9, 29, 14, 37), 100)], (r) => r.gas);
-    expect(pts.length).toBe(28);
-    expect(pts[27].t).toBe(+new Date(2026, 9, 29, 12, 0));
-    expect(pts[27].t - pts[26].t).toBe(BUCKET_MS);
-    expect(pts[0].t).toBe(pts[27].t - 27 * BUCKET_MS);
-    expect(pts[27].v).toBe(100);
+  it("returns 36 points spaced 5 min, anchored on a 5-minute boundary", () => {
+    // Newest row 14:37 local: the last bucket starts at 14:35.
+    const pts = windowSeries([rowAt(new Date(2026, 9, 29, 14, 37), 100)], (r) => r.gas);
+    expect(pts.length).toBe(36);
+    expect(pts[35].t).toBe(+new Date(2026, 9, 29, 14, 35));
+    expect(pts[35].t - pts[34].t).toBe(BUCKET_MS);
+    expect(pts[0].t).toBe(pts[35].t - 35 * BUCKET_MS);
+    expect(pts[35].v).toBe(100);
   });
 
   it("averages rows sharing a bucket, whatever the input order", () => {
-    const pts = weeklySeries(
+    const pts = windowSeries(
       [
-        rowAt(new Date(2026, 9, 29, 12, 5), 100),
-        rowAt(new Date(2026, 9, 29, 12, 40), 300),
-        rowAt(new Date(2026, 9, 29, 6, 10), 900),
+        rowAt(new Date(2026, 9, 29, 12, 1), 100),
+        rowAt(new Date(2026, 9, 29, 12, 3), 300),
+        rowAt(new Date(2026, 9, 29, 11, 47), 900),
       ],
       (r) => r.gas,
     );
-    expect(pts[27].v).toBe(200);
-    expect(pts[26].v).toBe(900);
+    expect(pts[35].v).toBe(200);
+    expect(pts[32].v).toBe(900);
   });
 
   it("leaves empty buckets as null gaps", () => {
-    const pts = weeklySeries(
-      [rowAt(new Date(2026, 9, 29, 12, 5), 100), rowAt(new Date(2026, 9, 27, 0, 30), 200)],
+    const pts = windowSeries(
+      [rowAt(new Date(2026, 9, 29, 12, 1), 100), rowAt(new Date(2026, 9, 29, 9, 30), 200)],
       (r) => r.gas,
     );
     const filled = pts.filter((p) => p.v !== null);
@@ -64,14 +63,8 @@ describe("weeklySeries", () => {
   });
 });
 
-describe("formatWeekLabel", () => {
-  it("shows day and short month only, so six labels fit a half-width card", () => {
-    expect(formatWeekLabel(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29");
-  });
-});
-
 describe("formatWeekTip", () => {
-  it("adds the hour for the hover tooltip", () => {
+  it("adds the date for the hover tooltip", () => {
     expect(formatWeekTip(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29, 12:00");
   });
 });

@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * React glue over `lib/poll.ts`: one polling loop for the week window, shared
+ * React glue over `lib/poll.ts`: one polling loop for the 3-hour window, shared
  * state for the screen. Falls back to demo data when Supabase env vars are unset.
  */
 import { useEffect, useState } from "react";
 import type { AirLog } from "@/lib/air";
 import { demoLogs } from "@/lib/demo";
 import { createPoller, type Poller } from "@/lib/poll";
-import { getSupabase, getWeekLogs } from "@/lib/supabase";
+import { getSupabase, getWindowLogs } from "@/lib/supabase";
 
 /** Poll cadence — the ESP32 inserts every 5 s, so 10 s never misses a beat. */
 export const POLL_MS = 10_000;
@@ -30,7 +30,7 @@ export interface AirData {
 }
 
 /**
- * Poll `log` for the past week of rows, keeping old rows on screen while a
+ * Poll `log` for the last 3 hours of rows, keeping old rows on screen while a
  * refresh is in flight.
  */
 export function useAirData(): AirData {
@@ -52,7 +52,7 @@ export function useAirData(): AirData {
         return;
       }
       try {
-        setRows(await getWeekLogs());
+        setRows(await getWindowLogs());
         setState("live");
         setLastUpdated(new Date());
       } catch (e) {

@@ -2,9 +2,9 @@
 
 Live dashboard for the Assignment 2 air-quality prototype. An ESP32 node reads the
 MQ-135 (gas), DHT11 (temperature + humidity) and LDR (light) every 5 seconds and
-POSTs each reading to a Supabase `log` table; this Next.js app polls the past week
-of that table every 10 seconds and shows the verdict, sensors, 6-hour-bucketed
-charts and history.
+POSTs each reading to a Supabase `log` table; this Next.js app polls the last 3
+hours of that table every 10 seconds and shows the verdict, sensors,
+5-minute-bucketed charts and history.
 
 ## Setup
 
@@ -53,8 +53,8 @@ Table `log`, one row per 5-second reading (written by `monitor_udara_supabase.in
 
 ## Structure
 
-- `lib/air.ts`: domain rules, thresholds, formatters, weekly 6-hour chart series (one source of truth)
-- `lib/supabase.ts`: Supabase client + the one week-window query
+- `lib/air.ts`: domain rules, thresholds, formatters, 5-minute chart series (one source of truth)
+- `lib/supabase.ts`: Supabase client + the one 3-hour window query (paged past the 1,000-row cap)
 - `lib/poll.ts`: interval poller (framework-free, fake-timer testable)
 - `lib/demo.ts`: deterministic demo dataset
 - `hooks/use-air-data.ts`: React polling state

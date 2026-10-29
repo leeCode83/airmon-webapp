@@ -1,4 +1,4 @@
-/** Freshness stamp: a live dot plus the time of the last successful fetch. */
+/** Freshness stamp: the time of the last successful fetch. */
 import { formatClock } from "@/lib/air";
 import type { ConnState } from "@/hooks/use-air-data";
 
@@ -22,7 +22,6 @@ export default function ConnectionStamp({
         : "Connection lost";
   return (
     <span className="stamp">
-      <span className={`live-dot${state === "live" ? "" : " stale"}`} aria-hidden="true" />
       {text}
     </span>
   );

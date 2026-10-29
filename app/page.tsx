@@ -66,15 +66,6 @@ export default function Page() {
       <Script src="/charts.js" strategy="afterInteractive" onReady={() => setChartsReady(true)} />
 
       <header className="topbar">
-        <svg className="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-          <path
-            d="M2 5h9.5a2.25 2.25 0 1 0-2.25-2.25M2 9h13a2.25 2.25 0 1 1-2.25 2.25M2 13h7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
         <span className="name">AirMon</span>
         <span className="scope">Automatic Room monitor</span>
       </header>

@@ -55,7 +55,6 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- shell: top bar + centred canvas (redraw: single-destination product) ---------- */
 .topbar { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); }
-.topbar .mark { display: inline-flex; color: var(--accent); }
 .topbar .name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
 .topbar .scope { color: var(--muted); font-size: var(--fs-small); }
 .topbar .spacer { flex: 1; }
@@ -143,7 +142,6 @@ th.n, td.n { text-align: right; }
 .btn:hover { background: var(--raised); }
 .btn:active { transform: translateY(1px); }
 .btn.ghost { border-color: transparent; }
-.btn svg { width: 14px; height: 14px; }
 
 /* ---------- states ---------- */
 .empty { display: grid; place-items: center; min-height: 96px; padding: 16px; border: 1px dashed var(--control); border-radius: var(--radius-card); color: var(--muted); text-align: center; }
@@ -151,12 +149,6 @@ th.n, td.n { text-align: right; }
 .notice { display: flex; align-items: center; gap: 8px; margin-top: var(--gap); padding: 10px 14px; border-radius: var(--radius-card); background: var(--pill-warning-bg); color: var(--pill-warning-ink); font-size: var(--fs-small); }
 .error-line { color: var(--negative); font-size: var(--fs-small); }
 .error-line button { border: 0; background: none; padding: 0; margin-left: 8px; color: var(--text); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-
-/* live dot: only moving feedback on the screen */
-.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--positive); margin-right: 6px; animation: pulse 2.4s ease-in-out infinite; }
-.live-dot.stale { background: var(--muted); animation: none; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
 
 /* chart tooltip (charts.js) inherits the theme */
 .chart-tip { background: var(--raised); border: 1px solid var(--border); }

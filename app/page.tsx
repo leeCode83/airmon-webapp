@@ -5,6 +5,7 @@
  * now? The verdict is the lead; sensors, charts and the table are its evidence.
  */
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Script from "next/script";
 import AirChart from "@/components/air-chart";
 import ConnectionStamp from "@/components/connection-stamp";
@@ -66,6 +67,7 @@ export default function Page() {
       <Script src="/charts.js" strategy="afterInteractive" onReady={() => setChartsReady(true)} />
 
       <header className="topbar">
+        <Image className="mark" src="/logo.jpeg" alt="AirMon logo" width={30} height={30} priority />
         <span className="name">AirMon</span>
         <span className="scope">Automatic Room monitor</span>
       </header>

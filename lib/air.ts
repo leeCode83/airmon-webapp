@@ -117,13 +117,22 @@ export function formatClock(ts: string | Date): string {
 }
 
 /**
- * Day plus hour for the weekly chart x axis: "29 Oct 14:00". Weekly buckets sit
- * on local 6-hour boundaries, so the minutes are always 00.
+ * Day label for the weekly chart x axis: "Oct 29". Short on purpose, so six of
+ * them fit a half-width card without touching; the hover tooltip carries the hour.
  * @param ts - ISO timestamp (or Date).
  */
 export function formatWeekLabel(ts: string | Date): string {
   const d = typeof ts === "string" ? new Date(ts) : ts;
-  return `${d.toLocaleString("en", { day: "numeric", month: "short" })} ${formatTime(d)}`;
+  return d.toLocaleString("en", { day: "numeric", month: "short" });
+}
+
+/**
+ * Hover detail for a weekly bucket: the axis label plus the hour, "Oct 29, 14:00".
+ * @param ts - ISO timestamp (or Date).
+ */
+export function formatWeekTip(ts: string | Date): string {
+  const d = typeof ts === "string" ? new Date(ts) : ts;
+  return `${formatWeekLabel(d)}, ${formatTime(d)}`;
 }
 
 /**

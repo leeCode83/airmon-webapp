@@ -5,7 +5,7 @@
  * /charts.js via next/script). Reused for gas, temperature and humidity.
  */
 import { useEffect, useRef } from "react";
-import { formatWeekLabel, type SeriesPoint } from "@/lib/air";
+import { formatWeekLabel, formatWeekTip, type SeriesPoint } from "@/lib/air";
 
 /** The slice of window.Charts the component uses. */
 interface ChartsApi {
@@ -18,6 +18,7 @@ interface ChartsApi {
       height: number;
       reference?: { value: number; label: string }[];
       xAt?: number[];
+      tips?: string[];
     },
   ) => void;
 }
@@ -36,7 +37,8 @@ export interface AirChartProps {
 }
 
 /**
- * Draw the series; gaps (null buckets) break the line honestly.
+ * Draw the series; gaps (null buckets) break the line honestly, isolated
+ * buckets render as dots inside the chart library.
  * @param props - See {@link AirChartProps}.
  */
 export default function AirChart({
@@ -54,14 +56,16 @@ export default function AirChart({
     if (!el || !chartsReady || points.length === 0) return;
     const Charts = (window as unknown as { Charts?: ChartsApi }).Charts;
     if (!Charts) return;
-    // 6-hour buckets repeat the clock time daily; label a few evenly spaced
-    // points with day + hour. Fewer on a narrow screen so they never touch.
+    // 6-hour buckets repeat the clock time daily, so the axis keeps day labels
+    // only and the hover tooltip carries the hour. A few evenly spaced labels;
+    // fewer on a narrow screen so they never touch.
     const maxLabels = el.clientWidth < 480 ? 4 : 6;
     const step = Math.max(1, Math.ceil(points.length / maxLabels));
     const xAt: number[] = [];
     for (let i = 0; i < points.length; i += step) xAt.push(i);
     Charts.line(el, {
       labels: points.map((p) => formatWeekLabel(new Date(p.t))),
+      tips: points.map((p) => formatWeekTip(new Date(p.t))),
       series: [{ name: ariaLabel, values: points.map((p) => p.v) }],
       format,
       height,

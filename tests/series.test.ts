@@ -3,6 +3,7 @@ import {
   BUCKET_MS,
   computeSummary,
   formatWeekLabel,
+  formatWeekTip,
   weeklySeries,
   type AirLog,
 } from "@/lib/air";
@@ -64,8 +65,14 @@ describe("weeklySeries", () => {
 });
 
 describe("formatWeekLabel", () => {
-  it("shows day, short month and hour", () => {
-    expect(formatWeekLabel(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29 12:00");
+  it("shows day and short month only, so six labels fit a half-width card", () => {
+    expect(formatWeekLabel(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29");
+  });
+});
+
+describe("formatWeekTip", () => {
+  it("adds the hour for the hover tooltip", () => {
+    expect(formatWeekTip(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29, 12:00");
   });
 });
 

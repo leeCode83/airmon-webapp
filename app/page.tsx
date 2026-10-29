@@ -87,7 +87,7 @@ export default function Page() {
 
         {demo && (
           <div className="notice">
-            Demo data — set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in
+            Demo data. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in
             .env.local to go live.
           </div>
         )}

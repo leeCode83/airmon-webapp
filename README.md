@@ -1,9 +1,10 @@
-# AirMon — Air Quality Monitor Dashboard
+# AirMon: Air Quality Monitor Dashboard
 
 Live dashboard for the Assignment 2 air-quality prototype. An ESP32 node reads the
 MQ-135 (gas), DHT11 (temperature + humidity) and LDR (light) every 5 seconds and
-POSTs each reading to a Supabase `log` table; this Next.js app polls that table
-every 10 seconds and shows the verdict, sensors, charts and history.
+POSTs each reading to a Supabase `log` table; this Next.js app polls the past week
+of that table every 10 seconds and shows the verdict, sensors, 6-hour-bucketed
+charts and history.
 
 ## Setup
 
@@ -14,7 +15,7 @@ every 10 seconds and shows the verdict, sensors, charts and history.
    ```
 
 2. Copy `.env.example` to `.env.local` (or `.env`) and fill both values from
-   **Supabase Dashboard > Project Settings > API** — the same URL and publishable
+   **Supabase Dashboard > Project Settings > API**, the same URL and publishable
    key the firmware already uses:
 
    ```
@@ -27,9 +28,10 @@ every 10 seconds and shows the verdict, sensors, charts and history.
 3. Run:
 
    ```bash
-   npm run dev     # dashboard at http://localhost:3000
-   npm test        # 22 unit tests (domain rules, chart series, demo data, poller)
-   npm run build   # production build
+   npm run dev       # dashboard at http://localhost:3000
+   npm test          # 28 unit tests (domain rules, chart series, demo data, poller)
+   npm run typecheck # strict tsc, no emit
+   npm run build     # production build
    ```
 
 Without env vars the dashboard renders a deterministic demo dataset (with a
@@ -51,11 +53,11 @@ Table `log`, one row per 5-second reading (written by `monitor_udara_supabase.in
 
 ## Structure
 
-- `lib/air.ts` — domain rules: thresholds, status, formatters, chart series (one source of truth)
-- `lib/supabase.ts` — Supabase client + the one query
-- `lib/poll.ts` — interval poller (framework-free, fake-timer testable)
-- `lib/demo.ts` — deterministic demo dataset
-- `hooks/use-air-data.ts` — React polling state
-- `components/` — status pill, KPI strip, chart, range select, history table, connection stamp
-- `app/` — layout, page, design tokens (data-terminal style via the repo's design-taste-frontend skill)
-- `tests/` — Vitest unit tests
+- `lib/air.ts`: domain rules, thresholds, formatters, weekly 6-hour chart series (one source of truth)
+- `lib/supabase.ts`: Supabase client + the one week-window query
+- `lib/poll.ts`: interval poller (framework-free, fake-timer testable)
+- `lib/demo.ts`: deterministic demo dataset
+- `hooks/use-air-data.ts`: React polling state
+- `components/`: status pill, KPI strip, chart, history table, connection stamp
+- `app/`: layout, page, design tokens (data-terminal style via the repo's design-taste-frontend skill)
+- `tests/`: Vitest unit tests

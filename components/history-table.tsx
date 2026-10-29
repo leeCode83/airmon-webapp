@@ -11,7 +11,7 @@ const CAP = 10;
 export default function HistoryTable({ rows }: { rows: AirLog[] }) {
   const recent = rows.slice(-CAP).reverse();
   if (recent.length === 0) {
-    return <div className="empty">No readings yet — waiting for the sensor node.</div>;
+    return <div className="empty">No readings yet. Waiting for the sensor node.</div>;
   }
   return (
     <div className="table-wrap">

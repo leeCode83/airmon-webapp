@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AirMon — Air Quality Monitor",
+  title: "AirMon: Air Quality Monitor",
   description:
     "Live air-quality readings from an ESP32 sensor node: gas, temperature, humidity, light and fan state.",
 };

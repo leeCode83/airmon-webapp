@@ -156,53 +156,6 @@ export interface SeriesPoint {
 }
 
 /**
- * Downsample rows into ≤ `maxPoints` equal time buckets, averaging each metric.
- * Data sparser than the cap maps one row to one point, so a short history draws
- * a continuous line. Keeps long windows (6 h ≈ 4,320 rows at 5 s) drawable.
- * Empty buckets stay null — an honest gap, not a fake flat line.
- * @param rows - Log rows, any order; sorted internally by timestamp.
- * @param pick - Value to plot per row, e.g. `(r) => r.gas`.
- * @param maxPoints - Bucket cap. Default 150.
- * @returns Points ascending in time; each point's `t` is its bucket start.
- */
-export function buildSeries(
-  rows: AirLog[],
-  pick: (r: AirLog) => number,
-  maxPoints = 150,
-): SeriesPoint[] {
-  if (rows.length === 0) return [];
-  const sorted = [...rows].sort((a, b) => +new Date(a.ts) - +new Date(b.ts));
-  const t0 = +new Date(sorted[0].ts);
-  const t1 = +new Date(sorted[sorted.length - 1].ts);
-  // Bucket only when the data is denser than the cap. Sparser data maps one row
-  // to one point: a 47-row first hour draws a continuous line, never scattered
-  // dots in 150 mostly-empty buckets.
-  const nBuckets = Math.min(maxPoints, sorted.length);
-  const width = Math.max((t1 - t0) / Math.max(nBuckets - 1, 1), 1);
-  // Integer bucket indices. The 1e-9 nudges a float-drifted boundary back onto
-  // its bucket: 64000/(64000/29) evaluates to 28.999…, which would strand the
-  // newest row (the live tip) one bucket early.
-  const bucketOf = (t: number) =>
-    Math.min(Math.max(Math.floor((t - t0) / width + 1e-9), 0), nBuckets - 1);
-
-  const sums = new Map<number, { sum: number; n: number }>();
-  for (const r of sorted) {
-    const bi = bucketOf(+new Date(r.ts));
-    const acc = sums.get(bi) ?? { sum: 0, n: 0 };
-    acc.sum += pick(r);
-    acc.n += 1;
-    sums.set(bi, acc);
-  }
-
-  const out: SeriesPoint[] = [];
-  for (let bi = 0; bi < nBuckets; bi++) {
-    const acc = sums.get(bi);
-    out.push({ t: t0 + bi * width, v: acc ? acc.sum / acc.n : null });
-  }
-  return out;
-}
-
-/**
  * Downsample rows into {@link WEEK_BUCKETS} fixed 6-hour buckets covering the
  * week window, averaging each metric. Buckets sit on local 00/06/12/18
  * boundaries and end at the newest row, so the live tip is always the last

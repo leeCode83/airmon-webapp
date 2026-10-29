@@ -5,7 +5,7 @@
  * /charts.js via next/script). Reused for gas, temperature and humidity.
  */
 import { useEffect, useRef } from "react";
-import { formatTime, type SeriesPoint } from "@/lib/air";
+import { formatWeekLabel, type SeriesPoint } from "@/lib/air";
 
 /** The slice of window.Charts the component uses. */
 interface ChartsApi {
@@ -54,14 +54,14 @@ export default function AirChart({
     if (!el || !chartsReady || points.length === 0) return;
     const Charts = (window as unknown as { Charts?: ChartsApi }).Charts;
     if (!Charts) return;
-    // Downsampled buckets repeat minute labels; label a few evenly spaced points.
-    // Fewer on a narrow screen so the first two never touch.
+    // 6-hour buckets repeat the clock time daily; label a few evenly spaced
+    // points with day + hour. Fewer on a narrow screen so they never touch.
     const maxLabels = el.clientWidth < 480 ? 4 : 6;
     const step = Math.max(1, Math.ceil(points.length / maxLabels));
     const xAt: number[] = [];
     for (let i = 0; i < points.length; i += step) xAt.push(i);
     Charts.line(el, {
-      labels: points.map((p) => formatTime(new Date(p.t))),
+      labels: points.map((p) => formatWeekLabel(new Date(p.t))),
       series: [{ name: ariaLabel, values: points.map((p) => p.v) }],
       format,
       height,
@@ -71,7 +71,7 @@ export default function AirChart({
   }, [chartsReady, points, format, reference, height, ariaLabel]);
 
   if (points.length === 0) {
-    return <div className="empty">No readings in this window yet.</div>;
+    return <div className="empty">No readings this week yet.</div>;
   }
   return <div className="chart" ref={elRef} role="img" aria-label={ariaLabel} />;
 }

@@ -14,13 +14,13 @@ import StatusPill from "@/components/status-pill";
 import { useAirData } from "@/hooks/use-air-data";
 import {
   badCauses,
-  buildSeries,
   computeSummary,
   fanLabel,
   formatGas,
   formatHum,
   formatTemp,
   formatTime,
+  weeklySeries,
   type AirLog,
   type AirStatus,
 } from "@/lib/air";
@@ -52,9 +52,9 @@ export default function Page() {
   const { rows, state, lastUpdated, errorMsg, demo, retry } = useAirData();
 
   const latest = rows.at(-1) ?? null;
-  const gasSeries = useMemo(() => buildSeries(rows, (r) => r.gas), [rows]);
-  const tempSeries = useMemo(() => buildSeries(rows, (r) => r.temp), [rows]);
-  const humSeries = useMemo(() => buildSeries(rows, (r) => r.hum), [rows]);
+  const gasSeries = useMemo(() => weeklySeries(rows, (r) => r.gas), [rows]);
+  const tempSeries = useMemo(() => weeklySeries(rows, (r) => r.temp), [rows]);
+  const humSeries = useMemo(() => weeklySeries(rows, (r) => r.hum), [rows]);
   const gasSummary = useMemo(() => computeSummary(rows, (r) => r.gas), [rows]);
   const peak = useMemo(
     () => rows.reduce((a, b) => (b.gas > a.gas ? b : a), rows[0]),

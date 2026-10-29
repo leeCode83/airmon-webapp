@@ -8,9 +8,6 @@ import { WEEK_MS, type AirLog } from "./air";
 /** Table name the ESP32 firmware writes to. */
 const TABLE = "log";
 
-/** Safety cap: 7 days at the 5 s cadence is 120,960 rows. */
-const WEEK_ROWS = 130_000;
-
 let client: SupabaseClient | null = null;
 
 /**
@@ -27,7 +24,11 @@ export function getSupabase(): SupabaseClient | null {
 
 /**
  * Fetch the past week of `log`, ascending in time: the dashboard's one window.
- * Charts bucket it into 6-hour steps downstream.
+ * Charts bucket it downstream.
+ *
+ * Supabase caps every request at 1,000 rows (`db.max_rows`), so the window is
+ * paged through with `.range` until a short page. Ascending order comes from
+ * reversing the newest-first pages.
  * @returns Rows ascending by `ts`; empty array when none in the window.
  * @throws When the query fails (offline, bad env, missing table).
  */
@@ -35,12 +36,20 @@ export async function getWeekLogs(): Promise<AirLog[]> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase env vars are not set");
   const since = new Date(Date.now() - WEEK_MS).toISOString();
-  const { data, error } = await sb
-    .from(TABLE)
-    .select("ts, gas, temp, hum, ldr, fan, status")
-    .gte("ts", since)
-    .order("ts", { ascending: false })
-    .limit(WEEK_ROWS); // ponytail: raw rows over the wire each poll; move averaging into a DB view when the payload hurts
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as AirLog[]).reverse();
+  const PAGE = 1000; // the server's own hard cap per request
+  const out: AirLog[] = [];
+  for (let offset = 0; offset < 20 * PAGE; offset += PAGE) {
+    // ponytail: one request per 1,000 rows per poll; raise db.max_rows or aggregate in a view if the window ever needs more
+    const { data, error } = await sb
+      .from(TABLE)
+      .select("ts, gas, temp, hum, ldr, fan, status")
+      .gte("ts", since)
+      .order("ts", { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as AirLog[];
+    out.push(...page);
+    if (page.length < PAGE) break;
+  }
+  return out.reverse();
 }

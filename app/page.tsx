@@ -10,9 +10,8 @@ import AirChart from "@/components/air-chart";
 import ConnectionStamp from "@/components/connection-stamp";
 import HistoryTable from "@/components/history-table";
 import MetricsRow from "@/components/metrics-row";
-import RangeSelect from "@/components/range-select";
 import StatusPill from "@/components/status-pill";
-import { RANGES, useAirData, type RangeKey } from "@/hooks/use-air-data";
+import { useAirData } from "@/hooks/use-air-data";
 import {
   badCauses,
   buildSeries,
@@ -49,10 +48,8 @@ const GAS_REFERENCE = [
 ];
 
 export default function Page() {
-  const [range, setRange] = useState<RangeKey>("30m");
   const [chartsReady, setChartsReady] = useState(false);
-  const limit = RANGES.find((r) => r.key === range)!.limit;
-  const { rows, state, lastUpdated, errorMsg, demo, retry } = useAirData(limit);
+  const { rows, state, lastUpdated, errorMsg, demo, retry } = useAirData();
 
   const latest = rows.at(-1) ?? null;
   const gasSeries = useMemo(() => buildSeries(rows, (r) => r.gas), [rows]);
@@ -88,13 +85,12 @@ export default function Page() {
             <h1>Overview</h1>
             <p className="sub">
               {rows.length > 0
-                ? `Gas peaked at ${formatGas(peak.gas)} at ${formatTime(peak.ts)} in this window.`
+                ? `Gas peaked at ${formatGas(peak.gas)} at ${formatTime(peak.ts)} this week.`
                 : "Live readings from the sensor node, refreshed every 10 seconds."}
             </p>
           </div>
           <div className="title-side">
             <ConnectionStamp state={state} lastUpdated={lastUpdated} />
-            <RangeSelect value={range} onChange={setRange} />
           </div>
         </div>
 
@@ -127,7 +123,7 @@ export default function Page() {
               format={formatGas}
               reference={GAS_REFERENCE}
               height={200}
-              ariaLabel="Gas level across the selected window"
+              ariaLabel="Gas level across the past week"
               chartsReady={chartsReady}
             />
           </section>
@@ -149,7 +145,7 @@ export default function Page() {
                     <span className="v">{fanLabel(latest.fan)}</span>
                   </div>
                   <div className="kv-row">
-                    <span className="k">Gas avg in window</span>
+                    <span className="k">Gas avg this week</span>
                     <span className="v">
                       {formatGas(Math.round(gasSummary.avg))}
                       <small>ADC</small>
@@ -177,7 +173,7 @@ export default function Page() {
               points={tempSeries}
               format={formatTemp}
               height={190}
-              ariaLabel="Temperature across the selected window"
+              ariaLabel="Temperature across the past week"
               chartsReady={chartsReady}
             />
           </section>
@@ -191,7 +187,7 @@ export default function Page() {
               points={humSeries}
               format={formatHum}
               height={190}
-              ariaLabel="Humidity across the selected window"
+              ariaLabel="Humidity across the past week"
               chartsReady={chartsReady}
             />
           </section>

@@ -1,24 +1,14 @@
 "use client";
 
 /**
- * React glue over `lib/poll.ts`: one polling loop per time range, shared state
- * for the screen. Falls back to demo data when Supabase env vars are unset.
+ * React glue over `lib/poll.ts`: one polling loop for the week window, shared
+ * state for the screen. Falls back to demo data when Supabase env vars are unset.
  */
 import { useEffect, useState } from "react";
 import type { AirLog } from "@/lib/air";
 import { demoLogs } from "@/lib/demo";
 import { createPoller, type Poller } from "@/lib/poll";
-import { getRecentLogs, getSupabase } from "@/lib/supabase";
-
-/** Selectable history windows. `limit` = rows at the firmware's 5 s cadence. */
-export const RANGES = [
-  { key: "30m", label: "30 min", limit: 360 },
-  { key: "1h", label: "1 hour", limit: 720 },
-  { key: "6h", label: "6 hours", limit: 4320 },
-] as const;
-
-/** Key of a selectable window. */
-export type RangeKey = (typeof RANGES)[number]["key"];
+import { getSupabase, getWeekLogs } from "@/lib/supabase";
 
 /** Poll cadence — the ESP32 inserts every 5 s, so 10 s never misses a beat. */
 export const POLL_MS = 10_000;
@@ -40,11 +30,10 @@ export interface AirData {
 }
 
 /**
- * Poll `log` for the newest `limit` rows, keeping old rows on screen while a
+ * Poll `log` for the past week of rows, keeping old rows on screen while a
  * refresh is in flight.
- * @param limit - Newest rows to keep: the active range's limit.
  */
-export function useAirData(limit: number): AirData {
+export function useAirData(): AirData {
   const [rows, setRows] = useState<AirLog[]>([]);
   const [state, setState] = useState<ConnState>("loading");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -57,13 +46,13 @@ export function useAirData(limit: number): AirData {
 
     async function fetchNow(): Promise<void> {
       if (demo) {
-        setRows(demoLogs().slice(-limit));
+        setRows(demoLogs());
         setState("live");
         setLastUpdated(new Date());
         return;
       }
       try {
-        setRows(await getRecentLogs(limit));
+        setRows(await getWeekLogs());
         setState("live");
         setLastUpdated(new Date());
       } catch (e) {
@@ -74,7 +63,7 @@ export function useAirData(limit: number): AirData {
 
     poller = createPoller(fetchNow, POLL_MS);
     return () => poller?.stop();
-  }, [limit, demo, nonce]);
+  }, [demo, nonce]);
 
   return { rows, state, lastUpdated, errorMsg, demo, retry: () => setNonce((n) => n + 1) };
 }

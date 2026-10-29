@@ -3,10 +3,13 @@
  * no polling. Uses the publishable key from env — RLS allows anon SELECT only.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { AirLog } from "./air";
+import { WEEK_MS, type AirLog } from "./air";
 
 /** Table name the ESP32 firmware writes to. */
 const TABLE = "log";
+
+/** Safety cap: 7 days at the 5 s cadence is 120,960 rows. */
+const WEEK_ROWS = 130_000;
 
 let client: SupabaseClient | null = null;
 
@@ -23,19 +26,21 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 /**
- * Fetch the newest rows of `log`, ascending in time.
- * @param limit - Max rows. 6 h at the firmware's 5 s cadence needs 4,320.
- * @returns Rows ascending by `ts`; empty array when the table is empty.
+ * Fetch the past week of `log`, ascending in time: the dashboard's one window.
+ * Charts bucket it into 6-hour steps downstream.
+ * @returns Rows ascending by `ts`; empty array when none in the window.
  * @throws When the query fails (offline, bad env, missing table).
  */
-export async function getRecentLogs(limit: number): Promise<AirLog[]> {
+export async function getWeekLogs(): Promise<AirLog[]> {
   const sb = getSupabase();
   if (!sb) throw new Error("Supabase env vars are not set");
+  const since = new Date(Date.now() - WEEK_MS).toISOString();
   const { data, error } = await sb
     .from(TABLE)
     .select("ts, gas, temp, hum, ldr, fan, status")
+    .gte("ts", since)
     .order("ts", { ascending: false })
-    .limit(limit);
+    .limit(WEEK_ROWS); // ponytail: raw rows over the wire each poll; move averaging into a DB view when the payload hurts
   if (error) throw new Error(error.message);
   return ((data ?? []) as AirLog[]).reverse();
 }

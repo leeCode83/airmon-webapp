@@ -5,11 +5,11 @@ import { demoLogs } from "@/lib/demo";
 describe("demoLogs", () => {
   const rows = demoLogs();
 
-  it("covers six hours at the five-second cadence, ending now", () => {
-    expect(rows.length).toBe(4320);
+  it("covers the week at the one-minute cadence, ending now", () => {
+    expect(rows.length).toBe(10_080);
     const spanS =
       (+new Date(rows.at(-1)!.ts) - +new Date(rows[0].ts)) / 1000;
-    expect(spanS).toBe((4320 - 1) * 5);
+    expect(spanS).toBe((10_080 - 1) * 60);
     expect(Date.now() - +new Date(rows.at(-1)!.ts)).toBeLessThan(10_000);
   });
 

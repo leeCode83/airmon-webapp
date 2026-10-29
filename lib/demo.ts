@@ -6,10 +6,10 @@
  */
 import { statusForGas, type AirLog } from "./air";
 
-/** Rows covered: 6 h at the firmware's 5 s cadence. */
-const ROWS = 4320;
+/** Rows covered: the 7-day window at a 60 s cadence. */
+const ROWS = 10_080;
 /** Seconds between rows. */
-const STEP_S = 5;
+const STEP_S = 60;
 
 /** Small seeded PRNG (mulberry32) — the same dataset on every call. */
 function rng(seed: number): () => number {
@@ -25,21 +25,21 @@ function rng(seed: number): () => number {
 /**
  * Generate the demo history: quiet room air, one cooking spike in the last
  * hour (gas past SEDANG then BURUK, fan on while the air is bad), temperature
- * and humidity drifting, LDR day/night from the real local hour.
+ * and humidity drifting, LDR day/night from each row's local hour.
  * @returns Rows ascending by `ts`, ending "now".
  */
 export function demoLogs(): AirLog[] {
   const rand = rng(20261025);
   const now = Date.now();
-  const hour = new Date().getHours();
-  const day = hour >= 6 && hour < 18;
   const eventStartMin = 38; // cooking starts 38 minutes ago
   const rows: AirLog[] = [];
 
   for (let i = 0; i < ROWS; i++) {
     const agoS = (ROWS - 1 - i) * STEP_S;
     const agoMin = agoS / 60;
-    const ts = new Date(now - agoS * 1000).toISOString();
+    const at = new Date(now - agoS * 1000);
+    const ts = at.toISOString();
+    const day = at.getHours() >= 6 && at.getHours() < 18;
 
     // Gas: baseline ~100–180, one event ramping to ~2,400 and decaying back.
     let gas = 115 + rand() * 60;

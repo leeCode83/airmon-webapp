@@ -34,6 +34,12 @@ export const LDR_NIGHT = 3500;
 export const TEMP_DAY = 35.0;
 /** Temperature cutoff in °C at night. Mirrors firmware `TEMP_NIGHT`. */
 export const TEMP_NIGHT = 30.0;
+/** One weekly chart bucket: 6 h. */
+export const BUCKET_MS = 6 * 3_600_000;
+/** Weekly buckets in the window: 28 x 6 h = 7 days. */
+export const WEEK_BUCKETS = 28;
+/** The week-long window the dashboard shows, in milliseconds. */
+export const WEEK_MS = WEEK_BUCKETS * BUCKET_MS;
 
 /**
  * Classify a gas reading. Boundaries match the firmware calibration:
@@ -111,6 +117,16 @@ export function formatClock(ts: string | Date): string {
 }
 
 /**
+ * Day plus hour for the weekly chart x axis: "29 Oct 14:00". Weekly buckets sit
+ * on local 6-hour boundaries, so the minutes are always 00.
+ * @param ts - ISO timestamp (or Date).
+ */
+export function formatWeekLabel(ts: string | Date): string {
+  const d = typeof ts === "string" ? new Date(ts) : ts;
+  return `${d.toLocaleString("en", { day: "numeric", month: "short" })} ${formatTime(d)}`;
+}
+
+/**
  * Why a BURUK verdict is BURUK: one sentence per crossed cutoff, gas or
  * temperature or both. The firmware adds hysteresis before clearing BURUK,
  * so a BURUK row can name no live cause; callers must handle an empty list.
@@ -182,6 +198,44 @@ export function buildSeries(
   for (let bi = 0; bi < nBuckets; bi++) {
     const acc = sums.get(bi);
     out.push({ t: t0 + bi * width, v: acc ? acc.sum / acc.n : null });
+  }
+  return out;
+}
+
+/**
+ * Downsample rows into {@link WEEK_BUCKETS} fixed 6-hour buckets covering the
+ * week window, averaging each metric. Buckets sit on local 00/06/12/18
+ * boundaries and end at the newest row, so the live tip is always the last
+ * bucket. Empty buckets stay null: an honest gap, not a fake flat line.
+ * @param rows - Log rows, any order; sorted internally by timestamp.
+ * @param pick - Value to plot per row, e.g. `(r) => r.gas`.
+ * @returns 28 points ascending in time; each point's `t` is its bucket start.
+ */
+export function weeklySeries(rows: AirLog[], pick: (r: AirLog) => number): SeriesPoint[] {
+  if (rows.length === 0) return [];
+  const sorted = [...rows].sort((a, b) => +new Date(a.ts) - +new Date(b.ts));
+  // Anchor the newest bucket onto the local wall clock (00/06/12/18), then step
+  // back 27 buckets to cover the week. Older rows clamp into bucket 0.
+  const newest = new Date(sorted[sorted.length - 1].ts);
+  newest.setHours(newest.getHours() - (newest.getHours() % 6), 0, 0, 0);
+  const lastStart = +newest;
+  const t0 = lastStart - (WEEK_BUCKETS - 1) * BUCKET_MS;
+  const bucketOf = (t: number) =>
+    Math.min(Math.max(Math.floor((t - t0) / BUCKET_MS), 0), WEEK_BUCKETS - 1);
+
+  const sums = new Map<number, { sum: number; n: number }>();
+  for (const r of sorted) {
+    const bi = bucketOf(+new Date(r.ts));
+    const acc = sums.get(bi) ?? { sum: 0, n: 0 };
+    acc.sum += pick(r);
+    acc.n += 1;
+    sums.set(bi, acc);
+  }
+
+  const out: SeriesPoint[] = [];
+  for (let bi = 0; bi < WEEK_BUCKETS; bi++) {
+    const acc = sums.get(bi);
+    out.push({ t: t0 + bi * BUCKET_MS, v: acc ? acc.sum / acc.n : null });
   }
   return out;
 }

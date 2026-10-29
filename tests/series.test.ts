@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildSeries, computeSummary, type AirLog } from "@/lib/air";
+import {
+  BUCKET_MS,
+  buildSeries,
+  computeSummary,
+  formatWeekLabel,
+  weeklySeries,
+  type AirLog,
+} from "@/lib/air";
 
 /** Row factory: seconds from a fixed epoch, one varying field. */
 function row(sec: number, gas: number): AirLog {
@@ -12,6 +19,11 @@ function row(sec: number, gas: number): AirLog {
     fan: 0,
     status: "BAIK",
   };
+}
+
+/** Row factory at an explicit local moment. */
+function rowAt(d: Date, gas: number): AirLog {
+  return { ...row(0, gas), ts: d.toISOString() };
 }
 
 describe("buildSeries", () => {
@@ -60,6 +72,50 @@ describe("buildSeries", () => {
     expect(pts[0].v).not.toBeNull();
     expect(pts.at(-1)!.v).not.toBeNull();
     expect(pts.slice(1, -1).some((p) => p.v === null)).toBe(true);
+  });
+});
+
+describe("weeklySeries", () => {
+  it("returns nothing for empty rows", () => {
+    expect(weeklySeries([], (r) => r.gas)).toEqual([]);
+  });
+
+  it("returns 28 points spaced 6 h, anchored on a local 6-hour boundary", () => {
+    // Newest row 14:37 local: the last bucket starts at 12:00 local.
+    const pts = weeklySeries([rowAt(new Date(2026, 9, 29, 14, 37), 100)], (r) => r.gas);
+    expect(pts.length).toBe(28);
+    expect(pts[27].t).toBe(+new Date(2026, 9, 29, 12, 0));
+    expect(pts[27].t - pts[26].t).toBe(BUCKET_MS);
+    expect(pts[0].t).toBe(pts[27].t - 27 * BUCKET_MS);
+    expect(pts[27].v).toBe(100);
+  });
+
+  it("averages rows sharing a bucket, whatever the input order", () => {
+    const pts = weeklySeries(
+      [
+        rowAt(new Date(2026, 9, 29, 12, 5), 100),
+        rowAt(new Date(2026, 9, 29, 12, 40), 300),
+        rowAt(new Date(2026, 9, 29, 6, 10), 900),
+      ],
+      (r) => r.gas,
+    );
+    expect(pts[27].v).toBe(200);
+    expect(pts[26].v).toBe(900);
+  });
+
+  it("leaves empty buckets as null gaps", () => {
+    const pts = weeklySeries(
+      [rowAt(new Date(2026, 9, 29, 12, 5), 100), rowAt(new Date(2026, 9, 27, 0, 30), 200)],
+      (r) => r.gas,
+    );
+    const filled = pts.filter((p) => p.v !== null);
+    expect(filled.map((p) => p.v)).toEqual([200, 100]);
+  });
+});
+
+describe("formatWeekLabel", () => {
+  it("shows day, short month and hour", () => {
+    expect(formatWeekLabel(new Date(2026, 9, 29, 12, 0))).toBe("Oct 29 12:00");
   });
 });
 

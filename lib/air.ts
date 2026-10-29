@@ -30,6 +30,10 @@ export const GAS_SEDANG = 500;
 export const GAS_BURUK = 2000;
 /** LDR (raw ADC) above this means night. Mirrors firmware `LDR_GELAP`; the module reads high in the dark. */
 export const LDR_NIGHT = 3500;
+/** Temperature cutoff in °C by day. Mirrors firmware `TEMP_DAY`. */
+export const TEMP_DAY = 35.0;
+/** Temperature cutoff in °C at night. Mirrors firmware `TEMP_NIGHT`. */
+export const TEMP_NIGHT = 30.0;
 
 /**
  * Classify a gas reading. Boundaries match the firmware calibration:
@@ -48,6 +52,15 @@ export function statusForGas(gas: number): AirStatus {
  */
 export function isNight(ldr: number): boolean {
   return ldr > LDR_NIGHT;
+}
+
+/**
+ * Temperature cutoff for the time of day: 30 °C at night, 35 °C by day, the
+ * same rule the firmware applies before writing `status`.
+ * @param night - Result of {@link isNight}.
+ */
+export function tempLimit(night: boolean): number {
+  return night ? TEMP_NIGHT : TEMP_DAY;
 }
 
 /**
@@ -95,6 +108,27 @@ export function formatClock(ts: string | Date): string {
   const d = typeof ts === "string" ? new Date(ts) : ts;
   const s = `${String(d.getSeconds()).padStart(2, "0")}`;
   return `${formatTime(d)}:${s}`;
+}
+
+/**
+ * Why a BURUK verdict is BURUK: one sentence per crossed cutoff, gas or
+ * temperature or both. The firmware adds hysteresis before clearing BURUK,
+ * so a BURUK row can name no live cause; callers must handle an empty list.
+ * @param log - The row whose status needs explaining.
+ */
+export function badCauses(log: AirLog): string[] {
+  const causes: string[] = [];
+  if (log.gas >= GAS_BURUK) {
+    causes.push(`Gas at ${formatGas(log.gas)} ADC, above the ${formatGas(GAS_BURUK)} cutoff.`);
+  }
+  const night = isNight(log.ldr);
+  const limit = tempLimit(night);
+  if (log.temp > limit) {
+    causes.push(
+      `Temperature at ${formatTemp(log.temp)} °C, above the ${formatTemp(limit)} °C ${night ? "night" : "day"} limit.`,
+    );
+  }
+  return causes;
 }
 
 /** Chart series point: epoch ms + value. */

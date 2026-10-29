@@ -14,6 +14,7 @@ import RangeSelect from "@/components/range-select";
 import StatusPill from "@/components/status-pill";
 import { RANGES, useAirData, type RangeKey } from "@/hooks/use-air-data";
 import {
+  badCauses,
   buildSeries,
   computeSummary,
   fanLabel,
@@ -21,17 +22,25 @@ import {
   formatHum,
   formatTemp,
   formatTime,
+  type AirLog,
   type AirStatus,
 } from "@/lib/air";
 
 const VERDICT_CLS: Record<AirStatus, string> = { BAIK: "pos", SEDANG: "warn", BURUK: "neg" };
 
-/** One sentence per verdict, naming its threshold — the evidence beside the answer. */
-const VERDICT_LINE: Record<AirStatus, string> = {
-  BAIK: "Gas below 500 ADC — room air is clean.",
-  SEDANG: "Gas above 500 ADC — ventilate the room.",
-  BURUK: "Gas above 2,000 ADC — fan is running.",
+/** Static verdict evidence. BURUK is explained live by {@link burukLine}. */
+const VERDICT_LINE: Record<Exclude<AirStatus, "BURUK">, string> = {
+  BAIK: "Gas below 500 ADC. Room air is clean.",
+  SEDANG: "Gas above 500 ADC. Ventilate the room.",
 };
+
+/** BURUK evidence: one sentence per crossed cutoff; names the firmware hysteresis when neither is live. */
+function burukLine(log: AirLog): string {
+  const causes = badCauses(log);
+  return causes.length > 0
+    ? causes.join(" ")
+    : "Sensor node raised this verdict; the reading is back under its cutoffs.";
+}
 
 /** Gas chart thresholds (module scope so the chart effect sees a stable value). */
 const GAS_REFERENCE = [
@@ -131,7 +140,9 @@ export default function Page() {
             {latest ? (
               <>
                 <div className={`verdict-word ${VERDICT_CLS[latest.status]}`}>{latest.status}</div>
-                <p className="verdict-sub">{VERDICT_LINE[latest.status]}</p>
+                <p className="verdict-sub">
+                  {latest.status === "BURUK" ? burukLine(latest) : VERDICT_LINE[latest.status]}
+                </p>
                 <div className="kv">
                   <div className="kv-row">
                     <span className="k">Fan</span>

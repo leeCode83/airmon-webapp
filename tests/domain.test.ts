@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  badCauses,
   fanLabel,
   formatClock,
   formatGas,
@@ -8,6 +9,7 @@ import {
   formatTime,
   isNight,
   statusForGas,
+  tempLimit,
 } from "@/lib/air";
 
 describe("statusForGas", () => {
@@ -26,6 +28,54 @@ describe("isNight", () => {
     expect(isNight(3500)).toBe(false);
     expect(isNight(3501)).toBe(true);
     expect(isNight(4095)).toBe(true);
+  });
+});
+
+describe("tempLimit", () => {
+  it("mirrors the firmware day and night cutoffs", () => {
+    expect(tempLimit(false)).toBe(35);
+    expect(tempLimit(true)).toBe(30);
+  });
+});
+
+describe("badCauses", () => {
+  const base = {
+    ts: "2026-10-29T10:00:00Z",
+    hum: 60,
+    fan: 1 as const,
+    status: "BURUK" as const,
+  };
+
+  it("blames gas alone once it reaches 2,000", () => {
+    expect(badCauses({ ...base, gas: 2000, temp: 30, ldr: 500 })).toEqual([
+      "Gas at 2,000 ADC, above the 2,000 cutoff.",
+    ]);
+    expect(badCauses({ ...base, gas: 2400, temp: 30, ldr: 500 })).toEqual([
+      "Gas at 2,400 ADC, above the 2,000 cutoff.",
+    ]);
+  });
+
+  it("blames temperature alone past the day limit", () => {
+    expect(badCauses({ ...base, gas: 800, temp: 35.6, ldr: 500 })).toEqual([
+      "Temperature at 35.6 °C, above the 35.0 °C day limit.",
+    ]);
+  });
+
+  it("uses the night limit when the LDR reads dark", () => {
+    expect(badCauses({ ...base, gas: 800, temp: 30.4, ldr: 3700 })).toEqual([
+      "Temperature at 30.4 °C, above the 30.0 °C night limit.",
+    ]);
+  });
+
+  it("names both causes together", () => {
+    expect(badCauses({ ...base, gas: 2100, temp: 36, ldr: 500 })).toEqual([
+      "Gas at 2,100 ADC, above the 2,000 cutoff.",
+      "Temperature at 36.0 °C, above the 35.0 °C day limit.",
+    ]);
+  });
+
+  it("returns empty just under both cutoffs (firmware hysteresis case)", () => {
+    expect(badCauses({ ...base, gas: 1999, temp: 35.0, ldr: 500 })).toEqual([]);
   });
 });
 

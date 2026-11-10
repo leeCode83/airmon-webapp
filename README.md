@@ -44,7 +44,7 @@ Table `log`, one row per 5-second reading (written by `monitor_udara_supabase.in
 | Column   | Type        | Meaning                                        |
 | -------- | ----------- | ---------------------------------------------- |
 | `ts`     | timestamptz | Row time, set by Postgres `now()`              |
-| `gas`    | int         | MQ-135 raw ADC 0–4095 (≥500 SEDANG, ≥2000 BURUK) |
+| `gas`    | int         | MQ-135 raw ADC 0–4095 (≥700 SEDANG, ≥1200 BURUK) |
 | `temp`   | float       | Temperature °C                                 |
 | `hum`    | float       | Relative humidity %RH                          |
 | `ldr`    | int         | LDR raw ADC (>3500 = night)                    |

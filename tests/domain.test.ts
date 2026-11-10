@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   badCauses,
+  chartDomain,
   fanLabel,
   formatClock,
   formatGas,
@@ -15,10 +16,10 @@ import {
 describe("statusForGas", () => {
   it("classifies at the firmware calibration boundaries", () => {
     expect(statusForGas(0)).toBe("BAIK");
-    expect(statusForGas(499)).toBe("BAIK");
-    expect(statusForGas(500)).toBe("SEDANG");
-    expect(statusForGas(1999)).toBe("SEDANG");
-    expect(statusForGas(2000)).toBe("BURUK");
+    expect(statusForGas(699)).toBe("BAIK");
+    expect(statusForGas(700)).toBe("SEDANG");
+    expect(statusForGas(1199)).toBe("SEDANG");
+    expect(statusForGas(1200)).toBe("BURUK");
     expect(statusForGas(4095)).toBe("BURUK");
   });
 });
@@ -46,12 +47,12 @@ describe("badCauses", () => {
     status: "BURUK" as const,
   };
 
-  it("blames gas alone once it reaches 2,000", () => {
-    expect(badCauses({ ...base, gas: 2000, temp: 30, ldr: 500 })).toEqual([
-      "Gas at 2,000 ADC, above the 2,000 cutoff.",
+  it("blames gas alone once it reaches 1,200", () => {
+    expect(badCauses({ ...base, gas: 1200, temp: 30, ldr: 500 })).toEqual([
+      "Gas at 1,200 ADC, above the 1,200 cutoff.",
     ]);
     expect(badCauses({ ...base, gas: 2400, temp: 30, ldr: 500 })).toEqual([
-      "Gas at 2,400 ADC, above the 2,000 cutoff.",
+      "Gas at 2,400 ADC, above the 1,200 cutoff.",
     ]);
   });
 
@@ -69,13 +70,27 @@ describe("badCauses", () => {
 
   it("names both causes together", () => {
     expect(badCauses({ ...base, gas: 2100, temp: 36, ldr: 500 })).toEqual([
-      "Gas at 2,100 ADC, above the 2,000 cutoff.",
+      "Gas at 2,100 ADC, above the 1,200 cutoff.",
       "Temperature at 36.0 °C, above the 35.0 °C day limit.",
     ]);
   });
 
   it("returns empty just under both cutoffs (firmware hysteresis case)", () => {
-    expect(badCauses({ ...base, gas: 1999, temp: 35.0, ldr: 500 })).toEqual([]);
+    expect(badCauses({ ...base, gas: 1199, temp: 35.0, ldr: 500 })).toEqual([]);
+  });
+});
+
+describe("chartDomain", () => {
+  it("pads the data extent so the line clears the plot edges", () => {
+    const d = chartDomain([400, 2615]);
+    expect(d.min).toBeCloseTo(400 - (2615 - 400) * 0.08, 6);
+    expect(d.max).toBeCloseTo(2615 + (2615 - 400) * 0.08, 6);
+  });
+
+  it("gives a flat series a symmetric window of ±10% around the value", () => {
+    expect(chartDomain([30.0])).toEqual({ min: 27, max: 33 });
+    expect(chartDomain([0])).toEqual({ min: -1, max: 1 });
+    expect(chartDomain([])).toEqual({ min: 0, max: 1 });
   });
 });
 

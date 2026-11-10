@@ -25,16 +25,27 @@ function rowAt(d: Date, gas: number): AirLog {
   return { ...row(0, gas), ts: d.toISOString() };
 }
 
+/** The current 5-minute bucket start — the same anchor `windowSeries` uses. */
+function anchor(): Date {
+  const a = new Date();
+  a.setMinutes(a.getMinutes() - (a.getMinutes() % 5), 0, 0);
+  return a;
+}
+
+/** Minutes from the current bucket start; positive minutes sit in the last bucket. */
+function fromAnchor(min: number): Date {
+  return new Date(+anchor() + min * 60_000);
+}
+
 describe("windowSeries", () => {
   it("returns nothing for empty rows", () => {
     expect(windowSeries([], (r) => r.gas)).toEqual([]);
   });
 
-  it("returns 36 points spaced 5 min, anchored on a 5-minute boundary", () => {
-    // Newest row 14:37 local: the last bucket starts at 14:35.
-    const pts = windowSeries([rowAt(new Date(2026, 9, 29, 14, 37), 100)], (r) => r.gas);
+  it("returns 36 points spaced 5 min, anchored on the current 5-minute mark", () => {
+    const pts = windowSeries([rowAt(new Date(), 100)], (r) => r.gas);
     expect(pts.length).toBe(36);
-    expect(pts[35].t).toBe(+new Date(2026, 9, 29, 14, 35));
+    expect(pts[35].t).toBe(+anchor());
     expect(pts[35].t - pts[34].t).toBe(BUCKET_MS);
     expect(pts[0].t).toBe(pts[35].t - 35 * BUCKET_MS);
     expect(pts[35].v).toBe(100);
@@ -43,9 +54,9 @@ describe("windowSeries", () => {
   it("averages rows sharing a bucket, whatever the input order", () => {
     const pts = windowSeries(
       [
-        rowAt(new Date(2026, 9, 29, 12, 1), 100),
-        rowAt(new Date(2026, 9, 29, 12, 3), 300),
-        rowAt(new Date(2026, 9, 29, 11, 47), 900),
+        rowAt(fromAnchor(1), 100),
+        rowAt(fromAnchor(3), 300),
+        rowAt(fromAnchor(-13), 900),
       ],
       (r) => r.gas,
     );
@@ -55,11 +66,18 @@ describe("windowSeries", () => {
 
   it("leaves empty buckets as null gaps", () => {
     const pts = windowSeries(
-      [rowAt(new Date(2026, 9, 29, 12, 1), 100), rowAt(new Date(2026, 9, 29, 9, 30), 200)],
+      [rowAt(fromAnchor(1), 100), rowAt(fromAnchor(-90), 200)],
       (r) => r.gas,
     );
     const filled = pts.filter((p) => p.v !== null);
     expect(filled.map((p) => p.v)).toEqual([200, 100]);
+  });
+
+  it("keeps the window on now: rows older than 3 hours clamp into bucket 0", () => {
+    const pts = windowSeries([rowAt(new Date(Date.now() - 10 * 60 * 60_000), 100)], (r) => r.gas);
+    expect(pts[0].v).toBe(100);
+    expect(pts.slice(1).every((p) => p.v === null)).toBe(true);
+    expect(pts[35].t).toBe(+anchor());
   });
 });
 

@@ -25,9 +25,9 @@ export interface AirLog {
 }
 
 /** Gas (raw ADC) at or above this is SEDANG. Mirrors firmware `GAS_SEDANG`. */
-export const GAS_SEDANG = 500;
+export const GAS_SEDANG = 700;
 /** Gas (raw ADC) at or above this is BURUK. Mirrors firmware `GAS_BURUK`. */
-export const GAS_BURUK = 2000;
+export const GAS_BURUK = 1200;
 /** LDR (raw ADC) above this means night. Mirrors firmware `LDR_GELAP`; the module reads high in the dark. */
 export const LDR_NIGHT = 3500;
 /** Temperature cutoff in °C by day. Mirrors firmware `TEMP_DAY`. */
@@ -43,7 +43,7 @@ export const WINDOW_MS = BUCKETS * BUCKET_MS;
 
 /**
  * Classify a gas reading. Boundaries match the firmware calibration:
- * 499 → BAIK, 500 → SEDANG, 1999 → SEDANG, 2000 → BURUK.
+ * 699 → BAIK, 700 → SEDANG, 1199 → SEDANG, 1200 → BURUK.
  * @param gas - Raw ADC value from the MQ-135.
  */
 export function statusForGas(gas: number): AirStatus {
@@ -159,18 +159,19 @@ export interface SeriesPoint {
 /**
  * Downsample rows into {@link BUCKETS} fixed 5-minute buckets covering the
  * window, averaging each metric. Buckets sit on local 5-minute boundaries and
- * end at the newest row, so the live tip is always the last bucket. Empty
- * buckets stay null: an honest gap, not a fake flat line.
- * @param rows - Log rows, any order; sorted internally by timestamp.
+ * end at the current 5-minute mark, so the axis always spans the last 3 hours
+ * of wall clock — even when the node is offline and the newest row is stale.
+ * Empty buckets stay null: an honest gap, not a fake flat line.
+ * @param rows - Log rows, any order.
  * @param pick - Value to plot per row, e.g. `(r) => r.gas`.
  * @returns 36 points ascending in time; each point's `t` is its bucket start.
  */
 export function windowSeries(rows: AirLog[], pick: (r: AirLog) => number): SeriesPoint[] {
   if (rows.length === 0) return [];
-  const sorted = [...rows].sort((a, b) => +new Date(a.ts) - +new Date(b.ts));
   // Anchor the newest bucket onto the local wall clock (5-minute marks), then
-  // step back 35 buckets to cover the window. Older rows clamp into bucket 0.
-  const newest = new Date(sorted[sorted.length - 1].ts);
+  // step back 35 buckets to cover the window. Rows older than the window clamp
+  // into bucket 0; rows in the future (clock skew) clamp into the last bucket.
+  const newest = new Date();
   newest.setMinutes(newest.getMinutes() - (newest.getMinutes() % 5), 0, 0);
   const lastStart = +newest;
   const t0 = lastStart - (BUCKETS - 1) * BUCKET_MS;
@@ -178,7 +179,7 @@ export function windowSeries(rows: AirLog[], pick: (r: AirLog) => number): Serie
     Math.min(Math.max(Math.floor((t - t0) / BUCKET_MS), 0), BUCKETS - 1);
 
   const sums = new Map<number, { sum: number; n: number }>();
-  for (const r of sorted) {
+  for (const r of rows) {
     const bi = bucketOf(+new Date(r.ts));
     const acc = sums.get(bi) ?? { sum: 0, n: 0 };
     acc.sum += pick(r);
@@ -192,6 +193,22 @@ export function windowSeries(rows: AirLog[], pick: (r: AirLog) => number): Serie
     out.push({ t: t0 + bi * BUCKET_MS, v: acc ? acc.sum / acc.n : null });
   }
   return out;
+}
+
+/**
+ * Padded y-axis domain for a chart: the values' extent grown 8% per side so
+ * the line never touches the plot edge; a flat series gets ±10% of the value
+ * (at least 1). The chart engine's nice-step ticks round these to clean
+ * boundaries, so the line fills the plot and the jumps in the data read as
+ * jumps in height.
+ * @param values - Non-null series values, plus any reference-line values.
+ */
+export function chartDomain(values: number[]): { min: number; max: number } {
+  if (values.length === 0) return { min: 0, max: 1 };
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const pad = hi > lo ? (hi - lo) * 0.08 : Math.max(Math.abs(hi) * 0.1, 1);
+  return { min: lo - pad, max: hi + pad };
 }
 
 /** Min / max / mean of one metric over a set of rows. */

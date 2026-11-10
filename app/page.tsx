@@ -21,6 +21,8 @@ import {
   formatHum,
   formatTemp,
   formatTime,
+  GAS_BURUK,
+  GAS_SEDANG,
   windowSeries,
   type AirLog,
   type AirStatus,
@@ -30,8 +32,8 @@ const VERDICT_CLS: Record<AirStatus, string> = { BAIK: "pos", SEDANG: "warn", BU
 
 /** Static verdict evidence. BURUK is explained live by {@link burukLine}. */
 const VERDICT_LINE: Record<Exclude<AirStatus, "BURUK">, string> = {
-  BAIK: "Gas below 500 ADC. Room air is clean.",
-  SEDANG: "Gas above 500 ADC. Ventilate the room.",
+  BAIK: `Gas below ${formatGas(GAS_SEDANG)} ADC. Room air is clean.`,
+  SEDANG: `Gas above ${formatGas(GAS_SEDANG)} ADC. Ventilate the room.`,
 };
 
 /** BURUK evidence: one sentence per crossed cutoff; names the firmware hysteresis when neither is live. */
@@ -44,8 +46,8 @@ function burukLine(log: AirLog): string {
 
 /** Gas chart thresholds (module scope so the chart effect sees a stable value). */
 const GAS_REFERENCE = [
-  { value: 500, label: "SEDANG 500" },
-  { value: 2000, label: "BURUK 2,000" },
+  { value: GAS_SEDANG, label: `SEDANG ${formatGas(GAS_SEDANG)}` },
+  { value: GAS_BURUK, label: `BURUK ${formatGas(GAS_BURUK)}` },
 ];
 
 export default function Page() {

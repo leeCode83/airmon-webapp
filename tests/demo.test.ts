@@ -28,7 +28,15 @@ describe("demoLogs", () => {
       expect(r.temp).toBeLessThan(40);
       expect(r.hum).toBeGreaterThan(30);
       expect(r.hum).toBeLessThan(90);
+      if (r.pred != null) {
+        expect(r.pred).toBeGreaterThanOrEqual(0);
+        expect(r.pred).toBeLessThanOrEqual(4095);
+      }
     }
+  });
+
+  it("carries a forecast on every row, like the firmware", () => {
+    expect(rows.every((r) => r.pred != null)).toBe(true);
   });
 
   it("tells the story: mostly clean air with one bad spike", () => {

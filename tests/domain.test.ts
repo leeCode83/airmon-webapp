@@ -8,10 +8,17 @@ import {
   formatHum,
   formatTemp,
   formatTime,
+  isEarlyWarning,
   isNight,
   statusForGas,
   tempLimit,
+  type AirLog,
 } from "@/lib/air";
+
+/** Minimal row: a gas verdict with an optional forecast. */
+function log(gas: number, status: AirLog["status"], pred?: number | null): AirLog {
+  return { ts: "2026-01-01T00:00:00Z", gas, temp: 30, hum: 60, ldr: 100, fan: 0, status, pred };
+}
 
 describe("statusForGas", () => {
   it("classifies at the firmware calibration boundaries", () => {
@@ -29,6 +36,24 @@ describe("isNight", () => {
     expect(isNight(3500)).toBe(false);
     expect(isNight(3501)).toBe(true);
     expect(isNight(4095)).toBe(true);
+  });
+});
+
+describe("isEarlyWarning", () => {
+  it("fires on the firmware's 700 line while the verdict is still BAIK", () => {
+    expect(isEarlyWarning(log(150, "BAIK", 700))).toBe(true);
+    expect(isEarlyWarning(log(150, "BAIK", 2400))).toBe(true);
+    expect(isEarlyWarning(log(150, "BAIK", 699))).toBe(false);
+  });
+
+  it("stays quiet once the verdict itself has moved", () => {
+    expect(isEarlyWarning(log(750, "SEDANG", 900))).toBe(false);
+    expect(isEarlyWarning(log(1300, "BURUK", 1500))).toBe(false);
+  });
+
+  it("is false without a forecast (MLP warming up)", () => {
+    expect(isEarlyWarning(log(150, "BAIK", null))).toBe(false);
+    expect(isEarlyWarning(log(150, "BAIK"))).toBe(false);
   });
 });
 

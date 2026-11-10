@@ -21,6 +21,8 @@ import {
   formatHum,
   formatTemp,
   formatTime,
+  isEarlyWarning,
+  statusForGas,
   GAS_BURUK,
   GAS_SEDANG,
   windowSeries,
@@ -56,6 +58,11 @@ export default function Page() {
 
   const latest = rows.at(-1) ?? null;
   const gasSeries = useMemo(() => windowSeries(rows, (r) => r.gas), [rows]);
+  // Buckets with no forecast yet (rows before the MLP warmed up) stay null: an honest gap.
+  const predSeries = useMemo(
+    () => windowSeries(rows.filter((r) => r.pred != null), (r) => r.pred as number),
+    [rows],
+  );
   const tempSeries = useMemo(() => windowSeries(rows, (r) => r.temp), [rows]);
   const humSeries = useMemo(() => windowSeries(rows, (r) => r.hum), [rows]);
   const gasSummary = useMemo(() => computeSummary(rows, (r) => r.gas), [rows]);
@@ -115,6 +122,8 @@ export default function Page() {
             </header>
             <AirChart
               points={gasSeries}
+              compare={{ points: predSeries, name: "Forecast (30 s)" }}
+              name="Gas"
               format={formatGas}
               reference={GAS_REFERENCE}
               height={200}
@@ -134,7 +143,26 @@ export default function Page() {
                 <p className="verdict-sub">
                   {latest.status === "BURUK" ? burukLine(latest) : VERDICT_LINE[latest.status]}
                 </p>
+                {isEarlyWarning(latest) && (
+                  <p className="early-warning" role="status">
+                    Early warning: the model sees gas past {formatGas(GAS_SEDANG)} ADC within about
+                    30&nbsp;s, before the sensor crosses it.
+                  </p>
+                )}
                 <div className="kv">
+                  <div className="kv-row">
+                    <span className="k">Forecast (30 s)</span>
+                    <span className="v">
+                      {latest.pred != null ? (
+                        <>
+                          {formatGas(latest.pred)}
+                          <small>ADC</small> · {statusForGas(latest.pred)}
+                        </>
+                      ) : (
+                        "–"
+                      )}
+                    </span>
+                  </div>
                   <div className="kv-row">
                     <span className="k">Fan</span>
                     <span className="v">{fanLabel(latest.fan)}</span>

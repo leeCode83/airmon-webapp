@@ -42,12 +42,14 @@ export async function getWindowLogs(): Promise<AirLog[]> {
     // ponytail: one request per 1,000 rows per poll; raise db.max_rows or aggregate in a view if the window ever needs more
     const { data, error } = await sb
       .from(TABLE)
-      .select("ts, gas, temp, hum, ldr, fan, status")
+      .select("ts, gas, temp, hum, ldr, fan, status, pred_gas_30s")
       .gte("ts", since)
       .order("ts", { ascending: false })
       .range(offset, offset + PAGE - 1);
     if (error) throw new Error(error.message);
-    const page = (data ?? []) as AirLog[];
+    const page = ((data ?? []) as (Omit<AirLog, "pred"> & { pred_gas_30s: number | null })[]).map(
+      (r) => ({ ...r, pred: r.pred_gas_30s }),
+    );
     out.push(...page);
     if (page.length < PAGE) break;
   }

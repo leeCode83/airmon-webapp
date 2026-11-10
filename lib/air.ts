@@ -22,6 +22,12 @@ export interface AirLog {
   fan: 0 | 1;
   /** Firmware verdict for {@link gas}. */
   status: AirStatus;
+  /**
+   * MLP forecast of {@link gas} ~30 s ahead (raw ADC), the firmware's
+   * `pred_gas_30s`. Null (or absent) until the model has 6 readings of
+   * history, so the newest row is always without a forecast yet.
+   */
+  pred?: number | null;
 }
 
 /** Gas (raw ADC) at or above this is SEDANG. Mirrors firmware `GAS_SEDANG`. */
@@ -146,6 +152,16 @@ export function badCauses(log: AirLog): string[] {
     );
   }
   return causes;
+}
+
+/**
+ * The model saw it first: the 30 s forecast crosses the SEDANG line while the
+ * firmware verdict is still BAIK — the same `PRED_ALERT_ON` 700 line the
+ * firmware fires its pre-emptive fan and buzzer on.
+ * @param log - The newest row.
+ */
+export function isEarlyWarning(log: AirLog): boolean {
+  return log.pred != null && log.pred >= GAS_SEDANG && log.status === "BAIK";
 }
 
 /** Chart series point: epoch ms + value. */

@@ -44,9 +44,11 @@ export function demoLogs(): AirLog[] {
     // Gas: baseline ~100–180, one event ramping to ~2,400 and decaying back.
     let gas = 115 + rand() * 60;
     const into = eventStartMin - agoMin; // minutes since the event began
+    let climbing = 0; // ramp slope, positive climbing / negative decaying
     if (into > 0 && into < 14) {
       const ramp = Math.min(into / 2.5, 1); // ~2.5 min climb
       const fall = into > 8 ? 1 - (into - 8) / 6 : 1;
+      climbing = into <= 2.5 ? 1 : into > 8 ? -0.4 : 0;
       gas += ramp * fall * (1600 + rand() * 800);
     }
     gas = Math.min(Math.round(gas), 4095);
@@ -57,7 +59,24 @@ export function demoLogs(): AirLog[] {
     const ldr = day ? Math.round(220 + rand() * 500) : Math.round(3650 + rand() * 400);
     const fan: 0 | 1 = status === "BAIK" ? 0 : 1;
 
-    rows.push({ ts, gas, temp: +temp.toFixed(1), hum: +hum.toFixed(1), ldr, fan, status });
+    // Forecast: tracks the direction (up on the ramp, down on the decay) with
+    // the jitter of a real model. Like the firmware, every row carries one —
+    // the newest row's forecast points into the next ~30 s.
+    const pred = Math.min(
+      4095,
+      Math.max(0, Math.round(gas + climbing * 220 + (rand() - 0.5) * 60)),
+    );
+
+    rows.push({
+      ts,
+      gas,
+      temp: +temp.toFixed(1),
+      hum: +hum.toFixed(1),
+      ldr,
+      fan,
+      status,
+      pred,
+    });
   }
   return rows;
 }

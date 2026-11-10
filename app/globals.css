@@ -109,6 +109,8 @@ a { color: inherit; text-decoration: none; }
 .chart-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; }
 .chart-head h3 { font-size: var(--fs-body); line-height: 20px; font-weight: 500; }
 .chart { position: relative; min-width: 0; }
+/* the auto legend (charts.js) lands here when a chart carries two series */
+.legend-slot:not(:empty) { margin-bottom: 8px; }
 .legend { display: inline-flex; align-items: baseline; gap: 12px; color: var(--muted); font-size: var(--fs-small); }
 .legend .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: baseline; }
 
@@ -118,6 +120,8 @@ a { color: inherit; text-decoration: none; }
 .verdict-word.warn { color: var(--warning); }
 .verdict-word.neg { color: var(--negative); }
 .verdict-sub { margin-top: 8px; color: var(--muted); }
+/* the model-saw-it-first moment: the notice recipe (pale warning tint, same-hue ink) */
+.early-warning { margin-top: 8px; padding: 8px 10px; border-radius: var(--radius-card); background: var(--pill-warning-bg); color: var(--pill-warning-ink); font-size: var(--fs-small); }
 .kv { margin-top: 16px; }
 .kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 28px; }
 .kv-row + .kv-row { border-top: 1px solid var(--rule); }
